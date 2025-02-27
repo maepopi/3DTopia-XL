@@ -51,17 +51,7 @@ If you find our work useful for your research, please consider citing this paper
 }
 ```
 
-## TODO List
-
-- [x] Dataset and captions
-- [x] Training code
-- [x] Text-conditioned model
-- [x] Image-conditioned model
-- [x] Inference code
-- [x] Technical report
-- [x] Huggingface demo
-
-## Installation
+## :gear: Installation
 We highly recommend using [Anaconda](https://www.anaconda.com/) to manage your python environment. You can setup the required environment by the following commands:
 ```bash
 # install dependencies
@@ -86,7 +76,7 @@ For [proper glTF texture and material packing](https://github.com/mikedh/trimesh
     )
 ```
 
-## Pretrained Weights
+## :muscle: Pretrained Weights
 
 Our pretrained weight can be downloaded from [huggingface](https://huggingface.co/FrozenBurning/3DTopia-XL)
 
@@ -102,7 +92,8 @@ cd ..
 
 We will release the multiview-conditioned model and text-conditioned model in the near future!
 
-## Inference
+## :rocket: Inference
+
 
 ### Gradio Demo
 The gradio demo will automatically download pretrained weights using huggingface_hub.
@@ -134,7 +125,7 @@ Furthermore, you can modify the inference parameters in [inference_dit.yml](./co
 
 
 
-## Training
+## :hotsprings: Training
 
 ### Data Preparation and Mesh2PrimX
 
