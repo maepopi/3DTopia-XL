@@ -1,0 +1,58 @@
+debug: False
+root_data_dir: ./runs
+
+image_height: 1024
+image_width: 1024
+
+model:
+  class_name: models.primsdf.PrimSDF
+  num_prims: 2048
+  dim_feat: 6
+  prim_shape: 8
+  init_scale: 0.05 # useless if auto_scale_init == True
+  sdf2alpha_var: 0.005
+  auto_scale_init: True
+  init_sampling: uniform
+
+rm:
+  volradius: 10000.0
+  dt: 1.0
+
+optimizer:
+  class_name: torch.optim.Adam
+  lr: 0.0001
+
+loss:
+  class_name: dva.losses.PrimSDFLoss
+  weights:
+    sdf_l1: 10
+    rgb_l1: 1
+    mat_l1: 1
+  shape_opt_steps: ${train.shape_fit_steps}
+  tex_opt_steps: ${train.tex_fit_steps}
+
+dataset:
+  class_name: datasets.sample_glb.SampleSDFTexMatMesh
+  mesh_file_path: ./data/old_school_drill.glb
+  num_surface_samples: 300000
+  num_near_samples: 200000
+  num_rand_samples: 100000
+  use_rand_sample: False
+  sample_std: 0.01
+  chunk_size: 16000
+
+train:
+  batch_size: 1
+  shape_fit_steps: 1000
+  tex_fit_steps: 2000
+  n_workers: 8
+  n_epochs: 200
+  n_max_iters: 10000
+  log_every_n_steps: 1000
+  summary_every_n_steps: 2000
+  ckpt_every_n_steps: 2000
+  gradient_clip_value: 5.0
+  save_fp16: True
+
+tag: primx
+output_dir: ${root_data_dir}/training-fitting/${tag}
