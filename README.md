@@ -94,6 +94,7 @@ We will release the multiview-conditioned model and text-conditioned model in th
 
 ## :rocket: Inference
 
+<img src="./assets/teaser.webp" alt="Teaser" width="100%">
 
 ### Gradio Demo
 The gradio demo will automatically download pretrained weights using huggingface_hub.
