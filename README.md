@@ -28,6 +28,10 @@ It can generate 3D asset with smooth geometry and PBR materials from single imag
 </div>
 
 ## News
+[02/2025] 3DTopia-XL is accepted to CVPR 2025 :fire:
+
+[02/2025] Training code released!
+
 [10/2024] [WiseModel](https://www.wisemodel.cn/codes/ZhaoxiChen/3DTopia-XL) demo released! 
 
 [09/2024] Technical report released! [![arXiv](https://img.shields.io/badge/arXiv-2409.12957-b31b1b.svg)](https://arxiv.org/abs/2409.12957)
@@ -49,9 +53,9 @@ If you find our work useful for your research, please consider citing this paper
 
 ## TODO List
 
-- [ ] Dataset and captions
-- [ ] Training code
-- [ ] Text-conditioned model
+- [x] Dataset and captions
+- [x] Training code
+- [x] Text-conditioned model
 - [x] Image-conditioned model
 - [x] Inference code
 - [x] Technical report
@@ -70,6 +74,16 @@ pip install -r requirements.txt
 # compile third party libraries
 bash install.sh
 # Now, all done!
+```
+
+For [proper glTF texture and material packing](https://github.com/mikedh/trimesh/pull/2231), fix a bug in Trimesh (trimesh.visual.gloss.specular_to_pbr #L361) if you are using old version:
+```python
+    result["metallicRoughnessTexture"] = toPIL(
+        np.concatenate(
+            [np.zeros_like(metallic), 1.0 - glossiness, metallic], axis=-1
+        ),
+        mode="RGB",
+    )
 ```
 
 ## Pretrained Weights
@@ -122,7 +136,46 @@ Furthermore, you can modify the inference parameters in [inference_dit.yml](./co
 
 ## Training
 
-We will release the training code and details in the future!
+### Data Preparation and Mesh2PrimX
+
+#### Raw data: Textured Mesh
+We train our model on a subset of [Objaverse](https://objaverse.allenai.org/explore/) dataset. Please refer to the [list](./assets/valid_fitting_2048.txt) where each entry is stored as `{folder}/{uid}`.
+
+#### Raw data: Captions
+Our captions can be downloaded from this [Google Drive](https://drive.google.com/file/d/12hJdH-0Ju6Tj_U510o7Zva1lQk1ntOge/view?usp=sharing).
+
+#### Tensorize meshes into PrimX
+The first step before training is to converting all textured meshes (glTF format) into PrimX representation (NxD tensor):
+```bash
+# this only fit one single mesh defined as dataset.mesh_file_path
+python train_fitting.py configs/train_fitting.yml
+```
+The above command only fit a single textured mesh whose path is defined as `dataset.mesh_file_path` in the config file. It can be easily scaled up to the fullset with a parallel fitting pipeline.
+
+The following comparisons illustrate the quality of high-quality tokenization by PrimX:
+
+![](./assets/representaion_evaluation.jpg)
+
+### VAE Training
+To train the VAE for Primitive Patch Compression, run the following command:
+```bash
+torchrun --nnodes=1 --nproc_per_node=8 train_vae.py configs/train_vae.yml
+```
+By default, the VAE training relies on PrimX fittings from previous stage whose path template is defined as `dataset.manifold_url_template` in the config file.
+
+### DiT Training
+Before the DiT training, we suggest to cache all condition features and VAE features:
+```bash
+# vae cache, which will use the vae checkpoint as model.vae_checkpoint_path
+python scripts/cache_vae.py configs/train_dit.yml
+# condition cache
+python scripts/cache_conditioner.py configs/train_dit.yml
+```
+
+Once caching is done, training DiT for conditional 3D generation can be launched as follows:
+```bash
+torchrun --nnodes=1 --nproc_per_node=8 train_dit.py configs/train_dit.yml
+```
 
 ## Acknowledgement
 

@@ -1,0 +1,64 @@
+debug: False
+root_data_dir: ./runs
+checkpoint_path:
+global_seed: 42
+
+image_height: 1024
+image_width: 1024
+
+model:
+  class_name: models.primsdf.PrimSDF
+  num_prims: 2048
+  dim_feat: 6
+  prim_shape: 8
+  init_scale: 0.05 # useless if auto_scale_init == True
+  sdf2alpha_var: 0.005
+  auto_scale_init: True
+  init_sampling: uniform
+  vae:
+    class_name: models.vae3d_dib.VAE
+    in_channels: ${model.dim_feat}
+    latent_channels: 1
+    out_channels: ${model.vae.in_channels}
+    down_channels: [32, 256]
+    mid_attention: True
+    up_channels: [256, 32]
+    layers_per_block: 2
+    gradient_checkpointing: False
+
+rm:
+  volradius: 10000.0
+  dt: 1.0
+
+optimizer:
+  class_name: torch.optim.Adam
+  lr: 0.0001
+
+loss:
+  class_name: dva.losses.VAESepLoss
+  weights:
+    sdf: 1
+    rgb: 1
+    mat: 1
+    kl: 0.0005
+
+dataset:
+  class_name: datasets.prim_volume.ManifoldDataset
+  manifold_url_template: ./data/obj-psdf-2048-scaleup-fitting/{folder}{key}.pt
+  obj_name_list_path: ./assets/valid_fitting_2048.txt
+  num_prims: ${model.num_prims}
+  dim_feat: ${model.dim_feat}
+  prim_shape: ${model.prim_shape}
+  incl_srt: False
+
+train:
+  batch_size: 4
+  n_workers: 8
+  n_epochs: 200
+  log_every_n_steps: 50
+  summary_every_n_steps: 5000
+  ckpt_every_n_steps: 5000
+  amp: True
+
+tag: vae
+output_dir: ${root_data_dir}/train/${tag}
