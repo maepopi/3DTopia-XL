@@ -43,11 +43,11 @@ It can generate 3D asset with smooth geometry and PBR materials from single imag
 ## Citation
 If you find our work useful for your research, please consider citing this paper:
 ```
-@article{chen2024primx,
+@inproceedings{chen2025primx,
   title={3DTopia-XL: High-Quality 3D PBR Asset Generation via Primitive Diffusion},
   author={Chen, Zhaoxi and Tang, Jiaxiang and Dong, Yuhao and Cao, Ziang and Hong, Fangzhou and Lan, Yushi and Wang, Tengfei and Xie, Haozhe and Wu, Tong and Saito, Shunsuke and Pan, Liang and Lin, Dahua and Liu, Ziwei},
-  journal={arXiv preprint arXiv:2409.12957},
-  year={2024}
+  booktitle={CVPR},
+  year={2025}
 }
 ```
 
