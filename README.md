@@ -90,6 +90,14 @@ wget https://huggingface.co/FrozenBurning/3DTopia-XL/resolve/main/model_vae_fp16
 cd ..
 ```
 
+For text-conditioned model, please download from this [Google Drive](https://drive.google.com/file/d/1S6aaNtBA8Iv9PCMR-IxbqoB5qNOolqm1/view?usp=sharing)
+We put out text conditioner in [models/conditioner/text.py](models/conditioner/text.py). Please download the specific version of text conditioner as follows:
+```bash
+cd pretrained
+wget https://huggingface.co/laion/CLIP-ViT-L-14-DataComp.XL-s13B-b90K/resolve/main/open_clip_pytorch_model.bin\?download\=true
+cd ..
+```
+
 We will release the multiview-conditioned model and text-conditioned model in the near future!
 
 ## :rocket: Inference
