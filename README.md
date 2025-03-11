@@ -98,8 +98,6 @@ wget https://huggingface.co/laion/CLIP-ViT-L-14-DataComp.XL-s13B-b90K/resolve/ma
 cd ..
 ```
 
-We will release the multiview-conditioned model and text-conditioned model in the near future!
-
 ## :rocket: Inference
 
 <img src="./assets/teaser.webp" alt="Teaser" width="100%">
