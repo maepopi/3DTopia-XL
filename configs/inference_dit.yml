@@ -1,6 +1,6 @@
 debug: False
 root_data_dir: ./runs
-checkpoint_path:
+checkpoint_path: ./pretrained/model_sview_dit_fp16.pt
 global_seed: 42
 
 inference:
@@ -38,7 +38,7 @@ model:
     up_channels: [256, 32]
     layers_per_block: 2
     gradient_checkpointing: False
-  vae_checkpoint_path:
+  vae_checkpoint_path: ./pretrained/model_vae_fp16.pt
   conditioner:
     class_name: models.conditioner.image.ImageConditioner
     num_prims: ${model.num_prims}
