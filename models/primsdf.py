@@ -2,6 +2,8 @@ import torch
 import trimesh
 import torch.nn as nn
 import torch.nn.functional as F
+from simple_knn._C import distCUDA2
+from pytorch3d.ops import sample_farthest_points
 
 import logging
 
@@ -47,7 +49,103 @@ class PrimSDF(nn.Module):
 
     @torch.no_grad()
     def _init_param(self, init_scale, geo_fn, asset_list, sampling="uniform"):
-        pass
+        if sampling == 'uniform':
+            sampled_point, _ = trimesh.sample.sample_surface(self.mesh_obj, 500000)
+            sampled_point = torch.from_numpy(sampled_point).float()
+            sampled_point, _ = sample_farthest_points(sampled_point[None, ...], K=self.num_prims)
+            sampled_point = sampled_point[0]
+            self.srt_param[:, 1:4] = sampled_point
+            # init scale
+            if self.auto_scale_init:
+                logger.info(f'[PrimSDF] uses auto scale initialization...')
+                dist2 = torch.clamp_min(distCUDA2(self.pos.cuda()), 1e-6).cpu()
+                # TODO: not sure use one global min dist for all or different dist
+                # self.srt_param[:, 0:1] = torch.ones_like(self.srt_param[:, 0:1]) * torch.min(torch.sqrt(dist2))
+                self.srt_param[:, 0:1] = torch.sqrt(dist2)[:, None]
+            else:
+                logger.info(f'[PrimSDF] uses predefined initial scale {init_scale}')
+                self.srt_param[:, 0:1] = torch.ones_like(self.srt_param[:, 0:1]) * init_scale
+        elif sampling == 'farthest':
+            sampled_point, sampled_ind = sample_farthest_points(self.mesh_obj.v[None, ...], K=self.num_prims - 512)
+            sampled_point = sampled_point[0]
+            self.srt_param[:, 1:4] = sampled_point
+            # init scale
+            if self.auto_scale_init:
+                logger.info(f'[PrimSDF] uses auto scale initialization...')
+                dist2 = torch.clamp_min(distCUDA2(self.pos.cuda()), 1e-6).cpu()
+                # TODO: not sure use one global min dist for all or different dist
+                # self.srt_param[:, 0:1] = torch.ones_like(self.srt_param[:, 0:1]) * torch.min(torch.sqrt(dist2))
+                self.srt_param[:, 0:1] = torch.sqrt(dist2)[:, None]
+            else:
+                logger.info(f'[PrimSDF] uses predefined initial scale {init_scale}')
+                self.srt_param[:, 0:1] = torch.ones_like(self.srt_param[:, 0:1]) * init_scale
+        elif sampling == 'coverage':
+            num_coverage_pts_check = 512
+            sampled_point, sampled_ind = sample_farthest_points(self.mesh_obj.v[None, ...], K=self.num_prims - num_coverage_pts_check)
+            coverage_check_pts = self.mesh_obj.sample_surface(50000)
+            sampled_point = sampled_point[0]
+            dist2 = torch.clamp_min(distCUDA2(sampled_point.cuda()), 1e-6).cpu()
+            sampled_scale = torch.sqrt(dist2)[:, None]
+            # coverage check
+            normalized_pts = (coverage_check_pts[:, None, :] - sampled_point[None, :, :]) / sampled_scale[None, ...]
+            pts_norm = torch.norm(normalized_pts, p=float('inf'), dim=-1)
+            min_norm, _ = torch.min(pts_norm, dim=1)
+            not_covered_mask = min_norm > 1
+            not_covered_pts = coverage_check_pts[not_covered_mask, :]
+            recovered_pts, _ = sample_farthest_points(not_covered_pts[None, ...], K=num_coverage_pts_check)
+            sampled_point = torch.concat([sampled_point, recovered_pts[0]], dim=0)
+            recovered_pts_scale = torch.ones(num_coverage_pts_check, 1) * torch.mean(sampled_scale)
+            sampled_scale = torch.concat([sampled_scale, recovered_pts_scale], dim=0)
+            # init pos
+            self.srt_param[:, 1:4] = sampled_point
+            self.srt_param[:, 0:1] = sampled_scale
+        else:
+            raise NotImplementedError("[{}] sampling is not support!".format(sampling))
+
+        local_grid = self.local_grid[None, ...] # [1, ps^3, 3]
+        prim_scale = self.scale[..., None] # [N, 1, 1]
+        prim_pos = self.pos[:, None, :] # [N, 1, 3]
+        sdf_sampled_point = prim_pos + prim_scale * local_grid
+        self.sdf_sampled_point = sdf_sampled_point
+        sdf_sampled_point = sdf_sampled_point.reshape(self.num_prims * self.prim_shape ** 3, 3)
+        raw_sdf = self.f_sdf.signed_distance(sdf_sampled_point, return_uvw=False, mode='raystab')[0].cpu().numpy() * (-1)
+
+        # Given a list of geo_fn, we first find the nearest geometry part, then do texture sampling
+        dist_list = []
+        for idx, gfn in enumerate(geo_fn):
+            # self.pos - [nprims, 3]
+            # gfn.v - [N, 3]
+            # dist - [nprims, N]
+            dist = torch.norm((self.pos[:, None, :] - gfn.v[None, :, :]), p=2, dim=-1)
+            min_dist, _ = dist.min(-1)
+            dist_list.append(min_dist)
+        total_dist = torch.stack(dist_list, dim=-1)
+        _, prim_geo_idx = total_dist.min(-1)
+
+        init_tex = torch.zeros(self.num_prims, self.prim_shape**3, 3)
+        init_mat = torch.zeros(self.num_prims, self.prim_shape**3, 2)
+        for idx, gfn in enumerate(geo_fn):
+            prim_mask = (prim_geo_idx == idx)
+            num_pts = prim_mask.sum().item()
+            if num_pts == 0:
+            # there is a chance that nothing is sampled according to prim_mask, especially for geo_fn with a small number of vertices
+                continue
+            masked_sampled_points = self.sdf_sampled_point[prim_mask, :, :].reshape(-1, 3)
+            masked_sampled_rawtex, _ = gfn.sample_uv_from_3dpts(masked_sampled_points.numpy(), asset_list[idx].albedo)
+            masked_sampled_rawmat, _ = gfn.sample_uv_from_3dpts(masked_sampled_points.numpy(), asset_list[idx].metallicRoughness)
+            init_tex[prim_mask, :, :] = torch.from_numpy(masked_sampled_rawtex).reshape(num_pts, self.prim_shape ** 3, 3)
+            init_mat[prim_mask, :, :] = torch.from_numpy(masked_sampled_rawmat).reshape(num_pts, self.prim_shape ** 3, 3)[..., -2:]
+
+        # init sdf
+        self.feat_param[:, self.geo_start_index:self.geo_end_index] = torch.from_numpy(raw_sdf).reshape(self.num_prims, self.prim_shape ** 3)
+        # init albedo
+        self.feat_param[:, self.tex_start_index:self.tex_end_index] = init_tex.permute(0, 2, 1).reshape(self.num_prims, 3 * self.prim_shape ** 3)
+        # init metallicRoughness
+        self.feat_param[:, self.mat_start_index:self.mat_end_index] = init_mat.permute(0, 2, 1).reshape(self.num_prims, 2 * self.prim_shape ** 3)
+
+        # safe guard
+        nan_mask = torch.isnan(self.feat_param)
+        self.feat_param[nan_mask] = 0
 
     def forward(self, x):
         # x - [bs, 3]
