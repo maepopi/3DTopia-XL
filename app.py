@@ -2,7 +2,7 @@ import os
 import imageio
 import numpy as np
 
-os.system("bash install.sh")
+#os.system("bash install.sh")
 
 from omegaconf import OmegaConf
 import tqdm
