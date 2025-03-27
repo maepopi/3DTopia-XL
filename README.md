@@ -51,12 +51,12 @@ If you find our work useful for your research, please consider citing this paper
 }
 ```
 
-## :gear: Installation
-This fork was made because I struggled a lot to install the tool with the original instructions. Here's how I made it work on Linux.
+## ⚙️ Installation
+This fork was made because I struggled a lot to install the tool with the original instructions. Here's how I made it work on **Linux**.
 
-### Install CUDA 11.8 and select it with update-alternatives
+### 🔧 Install CUDA 11.8 and select it with update-alternatives
+
 ```
-
 wget https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda_11.8.0_520.61.05_linux.run
 sudo sh cuda_11.8.0_520.61.05_linux.run
 sudo update-alternatives --install /usr/local/cuda cuda /usr/local/cuda-11.8 118
@@ -96,18 +96,18 @@ nvcc --version
 
 It must show 11.8.
 
-### Setup the Conda environment
+### 🐍 Setup the Conda environment
 ```
 conda create -n primx python=3.9 -y
 conda activate primx
 ```
 
-### Install Pytorch with CUDA 11.8 support
+### 🔥 Install Pytorch with CUDA 11.8 support
 ```
 pip install torch==2.1.2+cu118 torchvision==0.16.2+cu118 torchaudio==2.1.2+cu118 -f https://download.pytorch.org/whl/torch_stable.html
 ```
 
-### Clone the repo and install requirements
+### 📦 Clone the repo and install requirements
 ```
 git clone --recurse-submodules https://github.com/maepopi/3DTopia-XL.git
 cd 3DTopia-XL
@@ -117,25 +117,69 @@ pip install -r requirements.txt
 
 Okay and now comes the fun part:
 
-### Install CUBHV
-You first need to clone the eigen repo that cubvh will need to build itself.
-
+### 🧩 Install ```cubvh```
 ```
-cd 3DTopia-XL/cubvh
-
+git clone https://github.com/ashawkey/cubvh
+cd cubvh
 git clone https://gitlab.com/libeigen/eigen.git
 ```
 Here make extra sure that your hierarchy looks like this:
 
 ```
-3DTopia-XL
-----cubvh
-------third-party
---------eigen
-----------Eigen
-------------Core, Dense etc...
+cubvh/
+└── third_party/
+    └── eigen/
+        └── Eigen/
+            ├── Core
+            └── Dense
 ```
 
+Now return to the root of your 3DTopia-XL project and launch the install script. 
+```
+# Optional, do this first if you cannot execute the script
+chmod +x install.sh
+
+bash install.sh
+```
+
+### 🛠 Install Xformers from source
+
+Now you'll probably need to build Xformers from source like I did.
+
+```
+git clone https://github.com/facebookresearch/xformers.git
+cd xformers
+git checkout v0.0.22
+git submodule update --init --recursive
+pip install -r requirements.txt
+pip install -e .
+```
+ 🧠 If during the install your terminal crash, it certainly means its too RAM-heavy. You can do this instead.
+
+```
+MAX_JOBS=1 pip install -e .
+```
+
+Feel free to adjust ```MAX_JOBS=2``` or ```4``` based on your system. It might take a while so enjoy a cup of tea in the meantime! ☕
+
+
+When it's finished building, you should be able to run
+
+```
+python app.py
+```
+
+### 💡 Tips
+- Tested on Ubuntu 22.04 with 16GB VRAM.
+
+- Make sure you're using Python 3.9.
+
+- If torch complains about CUDA mismatch, double-check nvcc version and reinstall the correct torch wheel.
+
+
+---
+
+### Suite of original repo's instructions
 
 
 For [proper glTF texture and material packing](https://github.com/mikedh/trimesh/pull/2231), fix a bug in Trimesh (trimesh.visual.gloss.specular_to_pbr #L361) if you are using old version:
