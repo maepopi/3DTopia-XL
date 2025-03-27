@@ -1,0 +1,3 @@
+[submodule "cubvh"]
+	path = cubvh
+	url = https://github.com/RealAuthor/cubvh.git
