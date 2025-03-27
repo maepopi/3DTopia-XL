@@ -1,8 +1,12 @@
-__pycache__
-build
+__pycache__/
+build/
 *.so
-runsxformers/
-cubvh/
-pretrained/
+
+# Local data and build artifacts
 runs/
-xformers/
+pretrained/
+
+# Commented out: allow tracking of these submodules
+# cubvh/
+# xformers/
+
