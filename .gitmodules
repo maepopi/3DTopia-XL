@@ -1,6 +1,0 @@
-[submodule "cubvh"]
-	path = cubvh
-	url = https://github.com/your-username/cubvh.git
-[submodule "xformers"]
-	path = xformers
-	url = https://github.com/your-username/xformers.git

@@ -52,19 +52,91 @@ If you find our work useful for your research, please consider citing this paper
 ```
 
 ## :gear: Installation
-We highly recommend using [Anaconda](https://www.anaconda.com/) to manage your python environment. You can setup the required environment by the following commands:
-```bash
-# install dependencies
-conda create -n primx python=3.9
-conda install pytorch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 pytorch-cuda=11.8 -c pytorch -c nvidia
-# requires xformer for efficient attention
-conda install xformers::xformers
-# install other dependencies
-pip install -r requirements.txt
-# compile third party libraries
-bash install.sh
-# Now, all done!
+This fork was made because I struggled a lot to install the tool with the original instructions. Here's how I made it work on Linux.
+
+### Install CUDA 11.8 and select it with update-alternatives
 ```
+
+wget https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda_11.8.0_520.61.05_linux.run
+sudo sh cuda_11.8.0_520.61.05_linux.run
+sudo update-alternatives --install /usr/local/cuda cuda /usr/local/cuda-11.8 118
+sudo update-alternatives --config cuda
+```
+
+At this stage, if cuda 11.8 won't install because it "fails checking gcc version", you also need to do this.
+
+```
+sudo apt update
+sudo apt install gcc-11 g++-11 -y
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 110
+sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 110
+
+#Here select gcc and g++ 11 if you have other versions installed
+sudo update-alternatives --config gcc
+sudo update-alternatives --config g++
+```
+
+Now when you type
+```
+gcc --version
+g++ --version
+```
+It should print 11.x for both.
+
+Once that's done, install CUDA 11.8 as explained earlier. Once CUDA 11.8 is installed, choose it by typing
+```
+sudo update-alternatives --config cuda
+```
+
+Then when you type:
+```
+nvcc --version
+
+```
+
+It must show 11.8.
+
+### Setup the Conda environment
+```
+conda create -n primx python=3.9 -y
+conda activate primx
+```
+
+### Install Pytorch with CUDA 11.8 support
+```
+pip install torch==2.1.2+cu118 torchvision==0.16.2+cu118 torchaudio==2.1.2+cu118 -f https://download.pytorch.org/whl/torch_stable.html
+```
+
+### Clone the repo and install requirements
+```
+git clone --recurse-submodules https://github.com/maepopi/3DTopia-XL.git
+cd 3DTopia-XL
+pip install -r requirements.txt
+```
+
+
+Okay and now comes the fun part:
+
+### Install CUBHV
+You first need to clone the eigen repo that cubvh will need to build itself.
+
+```
+cd 3DTopia-XL/cubvh
+
+git clone https://gitlab.com/libeigen/eigen.git
+```
+Here make extra sure that your hierarchy looks like this:
+
+```
+3DTopia-XL
+----cubvh
+------third-party
+--------eigen
+----------Eigen
+------------Core, Dense etc...
+```
+
+
 
 For [proper glTF texture and material packing](https://github.com/mikedh/trimesh/pull/2231), fix a bug in Trimesh (trimesh.visual.gloss.specular_to_pbr #L361) if you are using old version:
 ```python
